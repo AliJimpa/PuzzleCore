@@ -1,0 +1,24 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "PuzzleCore",
+	"Description": "A minimal Unreal Engine plugin for building puzzles & relation between them in games (network-ready).",
+	"Category": "Other",
+	"CreatedBy": "Alijimpa",
+	"CreatedByURL": "https://alibadpa.weebly.com/",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "PuzzleCore",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}
