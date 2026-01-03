@@ -1,13 +1,14 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "PuzzleComponent.h"
+#include "PuzzleDebug.h"
 
 // Sets default values for this component's properties
 UPuzzleComponent::UPuzzleComponent()
 {
 	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
 	// off to improve performance if you don't need them.
-	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bCanEverTick = false;
 
 	// ...
 }
@@ -17,6 +18,21 @@ void UPuzzleComponent::BeginPlay()
 	Super::BeginPlay();
 
 	// ...
+	if (bAutoAvailable)
+	{
+		SetAvaliblePuzzle();
+	}
+	for (UPuzzleCheck *Check : Requirements)
+	{
+		if (IsValid(Check))
+		{
+			Check->BeginPuzzle(this);
+		}
+		else
+		{
+			LOG_WARNING("Find invalid PuzzleCheck in Requirements");
+		}
+	}
 }
 // Called every frame
 void UPuzzleComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
@@ -25,54 +41,135 @@ void UPuzzleComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 
 	// ...
 }
+// Called when the game ends
+void UPuzzleComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	for (UPuzzleCheck *Check : Requirements)
+	{
+		if (IsValid(Check))
+		{
+			Check->EndPuzzle(this);
+		}
+		else
+		{
+			LOG_WARNING("Find invalid PuzzleCheck in Requirements");
+		}
+	}
 
-// Implement PuzzleInterface Interface
-EPuzzleState UPuzzleComponent::GetPuzzleState_Implementation() const
+	Super::EndPlay(EndPlayReason);
+}
+
+EPuzzleState UPuzzleComponent::GetPuzzleState() const
 {
 	return PuzzleState;
 }
-bool UPuzzleComponent::IsPuzzleSolved_Implementation() const
+bool UPuzzleComponent::IsPuzzleSolved() const
 {
 	return PuzzleState == EPuzzleState::Solved;
 }
-bool UPuzzleComponent::IsPuzzleUnlocked_Implementation() const
+bool UPuzzleComponent::IsPuzzleLocked() const
 {
-	return PuzzleState == EPuzzleState::Solved || PuzzleState == EPuzzleState::Failed;
+	return PuzzleState == EPuzzleState::Locked;
 }
-bool UPuzzleComponent::IsPuzzleActive_Implementation() const
+bool UPuzzleComponent::IsPuzzleActive() const
 {
 	return PuzzleState != EPuzzleState::Unavailable;
 }
-FName UPuzzleComponent::GetPuzzleName_Implementation() const
+FName UPuzzleComponent::GetPuzzleName() const
 {
 	return PuzzleName;
 }
-bool UPuzzleComponent::CanSolve_Implementation(UObject *Solver) const
-{
-	return PuzzleState == EPuzzleState::Unavailable;
-	// if (Solver == nullptr)
-	// {
-	// }
-}
-bool UPuzzleComponent::TrySolve_Implementation(UObject *Solver)
-{
-	// if (!CanSolve(Solver))
-	// {
-	// 	return false;
-	// }
-
-	// TryCount++;
-
-	// // Default behavior: auto-solve
-	// PuzzleState = EPuzzleState::Solved;
-	return true;
-}
-int32 UPuzzleComponent::GetTryCount_Implementation() const
+int32 UPuzzleComponent::GetTryCount() const
 {
 	return TryCount;
 }
-void UPuzzleComponent::ResetPuzzle_Implementation()
+bool UPuzzleComponent::CanSolve(UObject *Solver) const
 {
-	//PuzzleState = EPuzzleState::Inactive;
+	int OrderNumber = 0;
+	for (UPuzzleCheck *Check : Requirements)
+	{
+		OrderNumber++;
+		// if the checkvalid reach to minimom threshould pass true
+		if (OrderNumber == MinimomRequirement)
+		{
+			return true;
+		}
+		// check is class valid
+		if (!IsValid(Check))
+		{
+			LOG_WARNING("Find invalid PuzzleCheck in Requirements");
+			continue;
+		}
+		// Check Rule is custom function for extend additional rule for checking in blueprin
+		if (!CheckRule(Check))
+		{
+			return false;
+		}
+		// Check Function inside Check puzzle
+		if (!Check->ExecuteCheck(Solver, OrderNumber))
+		{
+			return false;
+		}
+	}
+	return true;
+}
+EPuzzleState UPuzzleComponent::TrySolve(UObject *Solver)
+{
+	if (PuzzleState == EPuzzleState::Unavailable)
+	{
+		return EPuzzleState::Unavailable;
+	}
+	if (PuzzleState == EPuzzleState::Locked)
+	{
+		TryCount++;
+		if (CanSolve(Solver))
+		{
+			SetState(EPuzzleState::Solved);
+			OnSolved.Broadcast(this);
+		}
+		else
+		{
+			if (bAutoReset)
+			{
+				ResetPuzzle();
+			}
+			else
+			{
+				SetState(EPuzzleState::Failed);
+				OnFailed.Broadcast(this);
+			}
+		}
+	}
+	return PuzzleState;
+}
+void UPuzzleComponent::ResetPuzzle(bool bActive)
+{
+	for (UPuzzleCheck *Check : Requirements)
+	{
+		if (!IsValid(Check))
+		{
+			LOG_WARNING("Find invalid PuzzleCheck in Requirements");
+			continue;
+		}
+		Check->ResetPuzzle(bActive);
+	}
 	TryCount = 0;
+	SetState(bActive ? EPuzzleState::Locked : EPuzzleState::Unavailable);
+	OnReset.Broadcast(bActive, this);
+}
+
+void UPuzzleComponent::SetAvaliblePuzzle(bool bEnable)
+{
+	SetState(EPuzzleState::Locked);
+}
+
+void UPuzzleComponent::SetState(const EPuzzleState NewState)
+{
+	PuzzleState = NewState;
+	OnStateChanged.Broadcast(NewState, this);
+}
+
+bool UPuzzleComponent::CheckRule_Implementation(UPuzzleCheck *PuzlleCheck) const
+{
+	return true;
 }

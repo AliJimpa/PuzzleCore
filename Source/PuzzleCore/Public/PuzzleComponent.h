@@ -4,13 +4,26 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "PuzzleInterface.h"
 #include "PuzzleComponent.generated.h"
 
-//UCLASS(Blueprintable, Abstract, ClassGroup = (PuzzleCore), meta = (BlueprintSpawnableComponent))
-//UCLASS(Abstract, ClassGroup = (PuzzleCore), meta = (BlueprintSpawnableComponent))
-UCLASS(Blueprintable, ClassGroup=(PuzzleCore), meta=(BlueprintSpawnableComponent=false, BlueprintType=true))
-class PUZZLECORE_API UPuzzleComponent : public UActorComponent, public IPuzzleInterface
+class UPuzzleCheck;
+
+UENUM(BlueprintType)
+enum class EPuzzleState : uint8
+{
+	Unavailable UMETA(DisplayName = "Unavailable"),
+	Locked UMETA(DisplayName = "Locked"),
+	Solved UMETA(DisplayName = "Solved"),
+	Failed UMETA(DisplayName = "Failed")
+};
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnStateChanged, EPuzzleState, NewState, UPuzzleComponent *, Puzzle);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSolved, UPuzzleComponent *, Puzzle);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnFailed, UPuzzleComponent *, Puzzle);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnReset, bool, bActive, UPuzzleComponent *, Puzzle);
+
+UCLASS(Blueprintable, ClassGroup = (PuzzleCore), meta = (BlueprintSpawnableComponent = false, BlueprintType = true))
+class PUZZLECORE_API UPuzzleComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
@@ -21,26 +34,108 @@ public:
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 
 private:
-	UPROPERTY(EditDefaultsOnly, Category = "Puzzle")
+	/** Automatically makes the puzzle available when the game starts */
+	UPROPERTY(EditAnywhere, Category = "Puzzle", meta = (ToolTip = "Automatically makes the puzzle available when the game starts"))
+	bool bAutoAvailable = true;
+	/** Display name of the puzzle */
+	UPROPERTY(EditAnywhere, Category = "Puzzle", meta = (ToolTip = "Unique name used to identify this puzzle"))
 	FName PuzzleName;
-	EPuzzleState PuzzleState;
+	/** List of requirements that must be satisfied to solve the puzzle */
+	UPROPERTY(EditAnywhere, Instanced, Category = "Puzzle", meta = (ToolTip = "Conditions that must be met before the puzzle can be solved"))
+	TArray<UPuzzleCheck *> Requirements;
+	/** Automatically resets the puzzle after a failed attempt */
+	UPROPERTY(EditAnywhere, Category = "Puzzle|Setting", meta = (ToolTip = "Automatically resets the puzzle when it fails"))
+	bool bAutoReset = true;
+	/** Minimum number of requirements that must be satisfied */
+	UPROPERTY(EditAnywhere, Category = "Puzzle|Setting", meta = (ToolTip = "Minimum number of requirements that must be satisfied to solve the puzzle, 0 means all condition should check"))
+	int32 MinimomRequirement = 0;
+	/** Current runtime state of the puzzle */
+	EPuzzleState PuzzleState = EPuzzleState::Unavailable;
+	/** Number of solve attempts */
 	int32 TryCount;
+	/**
+	 * Changes the current puzzle state and triggers state-related events.
+	 * @param NewState The new state to apply.
+	 */
+	void SetState(const EPuzzleState NewState);
+
+protected:
+	/**
+	 * Checks whether a single puzzle rule is satisfied.
+	 * Can be overridden in Blueprint for custom rule logic.
+	 *
+	 * @param PuzzleCheck Rule object to evaluate.
+	 * @return True if the rule is satisfied.
+	 */
+	UFUNCTION(BlueprintNativeEvent, Category = "Puzzle", meta = (ToolTip = "Evaluates a single puzzle requirement ,for custom extended"))
+	bool CheckRule(UPuzzleCheck *PuzlleCheck) const;
 
 public:
-	// Implement PuzzleInterface Interface
-	virtual EPuzzleState GetPuzzleState_Implementation() const override;
-	virtual bool IsPuzzleSolved_Implementation() const override;
-	virtual bool IsPuzzleUnlocked_Implementation() const override;
-	virtual bool IsPuzzleActive_Implementation() const override;
-	virtual FName GetPuzzleName_Implementation() const override;
-	virtual bool TrySolve_Implementation(UObject *Solver) override;
-	virtual bool CanSolve_Implementation(UObject *Solver) const override;
-	virtual int32 GetTryCount_Implementation() const override;
-	virtual void ResetPuzzle_Implementation() override;
+	/** Returns the current puzzle state */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Puzzle|Getter", meta = (ToolTip = "Returns the current state of the puzzle"))
+	EPuzzleState GetPuzzleState() const;
+	/** Returns true if the puzzle has been solved */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Puzzle|Getter", meta = (ToolTip = "Returns true if the puzzle is solved"))
+	bool IsPuzzleSolved() const;
+	/** Returns true if the puzzle is currently locked */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Puzzle|Getter", meta = (ToolTip = "Returns true if the puzzle is locked"))
+	bool IsPuzzleLocked() const;
+	/** Returns true if the puzzle is active */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Puzzle|Getter", meta = (ToolTip = "Returns true if the puzzle isNot Unavailable"))
+	bool IsPuzzleActive() const;
+	/** Returns the puzzle name */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Puzzle|Getter", meta = (ToolTip = "Returns the puzzle name"))
+	FName GetPuzzleName() const;
+	/** Returns the number of solve attempts */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Puzzle|Getter", meta = (ToolTip = "Returns the number of times the puzzle was attempted"))
+	int32 GetTryCount() const;
+	/**
+	 * Checks whether the given solver is allowed to solve the puzzle.
+	 *
+	 * @param Solver Object attempting to solve the puzzle.
+	 * @return True if the puzzle can be solved.
+	 */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Puzzle", meta = (ToolTip = "Checks whether the puzzle can be solved by the given solver"))
+	bool CanSolve(UObject *Solver) const;
+	/**
+	 * Attempts to solve the puzzle.
+	 *
+	 * @param Solver Object attempting to solve the puzzle.
+	 * @return The resulting puzzle state.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Puzzle", meta = (ToolTip = "Attempts to solve the puzzle and returns the resulting state"))
+	EPuzzleState TrySolve(UObject *Solver);
+	/**
+	 * Resets the puzzle.
+	 *
+	 * @param bActive If true, the puzzle becomes active after reset.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Puzzle")
+	void ResetPuzzle(bool bActive = true);
+	/**
+	 * Enables or disables the puzzle availability.
+	 *
+	 * @param bEnable Whether the puzzle is available.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Puzzle")
+	void SetAvaliblePuzzle(bool bEnable = true);
+	/** Called when the puzzle state changes */
+	UPROPERTY(BlueprintAssignable, Category = "Puzzle|Event")
+	FOnStateChanged OnStateChanged;
+	/** Called when the puzzle is solved */
+	UPROPERTY(BlueprintAssignable, Category = "Puzzle|Event")
+	FOnSolved OnSolved;
+	/** Called when the puzzle fails */
+	UPROPERTY(BlueprintAssignable, Category = "Puzzle|Event")
+	FOnFailed OnFailed;
+	/** Called when the puzzle is reset */
+	UPROPERTY(BlueprintAssignable, Category = "Puzzle|Event")
+	FOnReset OnReset;
 };
