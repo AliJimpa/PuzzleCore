@@ -64,4 +64,6 @@ protected:
 
 private:
 	UPuzzleComponent *MyOwner = nullptr;
+	UPROPERTY(EditAnywhere, Category = "PuzzleCheck", AdvancedDisplay)
+	bool bShowDebug = true;
 };

@@ -52,6 +52,8 @@ UPuzzleComponent *UPuzzleCheck::GetOwnerPuzzle() const
 }
 void UPuzzleCheck::PrintDebug(const FString &Message, bool bError)
 {
+    if (!bShowDebug)
+        return;
     if (!MyOwner->GetOwner())
         return;
 

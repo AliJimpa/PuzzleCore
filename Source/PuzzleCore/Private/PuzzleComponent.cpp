@@ -113,19 +113,27 @@ bool UPuzzleComponent::CanSolve(UObject *Solver) const
 	}
 	return true;
 }
-EPuzzleState UPuzzleComponent::TrySolve(UObject *Solver)
+bool UPuzzleComponent::TrySolve(UObject *Solver)
 {
 	if (PuzzleState == EPuzzleState::Unavailable)
 	{
-		return EPuzzleState::Unavailable;
+		return false;
 	}
-	if (PuzzleState == EPuzzleState::Locked)
+
+	if (PuzzleState == EPuzzleState::Failed && !bCanAttemptAfterFail)
+	{
+		PRINT("Cannot trySolve: Puzzle is Failed");
+		return false;
+	}
+
+	if (PuzzleState != EPuzzleState::Solved)
 	{
 		TryCount++;
 		if (CanSolve(Solver))
 		{
 			SetState(EPuzzleState::Solved);
 			OnSolved.Broadcast(this);
+			return true;
 		}
 		else
 		{
@@ -138,9 +146,14 @@ EPuzzleState UPuzzleComponent::TrySolve(UObject *Solver)
 				SetState(EPuzzleState::Failed);
 				OnFailed.Broadcast(this);
 			}
+			return false;
 		}
 	}
-	return PuzzleState;
+	else
+	{
+		LOG("The puzzle already solved 'Requirements' dident checked!");
+		return true;
+	}
 }
 void UPuzzleComponent::ResetPuzzle(bool bActive)
 {
@@ -157,18 +170,15 @@ void UPuzzleComponent::ResetPuzzle(bool bActive)
 	SetState(bActive ? EPuzzleState::Locked : EPuzzleState::Unavailable);
 	OnReset.Broadcast(bActive, this);
 }
-
 void UPuzzleComponent::SetAvaliblePuzzle(bool bEnable)
 {
 	SetState(EPuzzleState::Locked);
 }
-
 void UPuzzleComponent::SetState(const EPuzzleState NewState)
 {
 	PuzzleState = NewState;
 	OnStateChanged.Broadcast(NewState, this);
 }
-
 bool UPuzzleComponent::CheckRule_Implementation(UPuzzleCheck *PuzlleCheck) const
 {
 	return true;

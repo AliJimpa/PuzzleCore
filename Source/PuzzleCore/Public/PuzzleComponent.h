@@ -51,10 +51,13 @@ private:
 	UPROPERTY(EditAnywhere, Instanced, Category = "Puzzle", meta = (ToolTip = "Conditions that must be met before the puzzle can be solved"))
 	TArray<UPuzzleCheck *> Requirements;
 	/** Automatically resets the puzzle after a failed attempt */
-	UPROPERTY(EditAnywhere, Category = "Puzzle|Setting", meta = (ToolTip = "Automatically resets the puzzle when it fails"))
+	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "Puzzle", meta = (ToolTip = "Automatically resets the puzzle when it fails"))
 	bool bAutoReset = true;
+	/** Automatically resets the puzzle after a failed attempt */
+	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "Puzzle", meta = (ToolTip = "If enabled, the puzzle can be attempted again even after it has failed. When disabled, once the puzzle enters the Failed state, further attempts are blocked."))
+	bool bCanAttemptAfterFail = true;
 	/** Minimum number of requirements that must be satisfied */
-	UPROPERTY(EditAnywhere, Category = "Puzzle|Setting", meta = (ToolTip = "Minimum number of requirements that must be satisfied to solve the puzzle, 0 means all condition should check"))
+	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "Puzzle", meta = (ToolTip = "Minimum number of requirements that must be satisfied to solve the puzzle, 0 means all condition should check"))
 	int32 MinimomRequirement = 0;
 	/** Current runtime state of the puzzle */
 	EPuzzleState PuzzleState = EPuzzleState::Unavailable;
@@ -108,16 +111,16 @@ public:
 	 * Attempts to solve the puzzle.
 	 *
 	 * @param Solver Object attempting to solve the puzzle.
-	 * @return The resulting puzzle state.
+	 * @return True if the puzzle solved.
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Puzzle", meta = (ToolTip = "Attempts to solve the puzzle and returns the resulting state"))
-	EPuzzleState TrySolve(UObject *Solver);
+	UFUNCTION(BlueprintCallable, Category = "Puzzle", meta = (ToolTip = "Attempts to solve the puzzle and returns 'True' if the puzzle solved"))
+	bool TrySolve(UObject *Solver);
 	/**
 	 * Resets the puzzle.
 	 *
 	 * @param bActive If true, the puzzle becomes active after reset.
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Puzzle")
+	UFUNCTION(BlueprintCallable, Category = "Puzzle", meta = (ToolTip = "Evaluates Reset event in all requirement and then if active true set state to locked and if false set state to Unavailable"))
 	void ResetPuzzle(bool bActive = true);
 	/**
 	 * Enables or disables the puzzle availability.
