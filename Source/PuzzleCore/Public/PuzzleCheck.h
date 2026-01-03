@@ -16,10 +16,8 @@ class PUZZLECORE_API UPuzzleCheck : public UObject
 {
 	GENERATED_BODY()
 public:
-	// UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Interact",meta = (UseComponentPicker, EditCondition = "bUseApplyMode", EditConditionHides))
-	// EApplyMode ApplyMode = EApplyMode::Selected;
-	// UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Interact", meta = (AllowedClasses="/Script/Engine.StaticMeshComponent",UseComponentPicker, EditCondition = "bUseComponent && ApplyMode == EApplyMode::Selected", EditConditionHides))
-	// TArray<FComponentReference> ComponentRef;
+	virtual UWorld *GetWorld() const override;
+
 public:
 	/**
 	 * Called when the puzzle begins evaluation for this check.
@@ -52,7 +50,7 @@ public:
 
 protected:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Puzzle|Getter", meta = (ToolTip = "Returns the owner PuzzleComponent"))
-	UPuzzleComponent* GetOwnerPuzzle() const;
+	UPuzzleComponent *GetOwnerPuzzle() const;
 	UFUNCTION(BlueprintImplementableEvent, Category = "PuzzleCheck", meta = (ToolTip = "Called when the puzzle begins evaluation for this check"))
 	void OnBeginPuzzle();
 	UFUNCTION(BlueprintImplementableEvent, BlueprintPure, Category = "PuzzleCheck", meta = (ToolTip = "Evaluates whether this puzzlecheck condition is satisfied"))
@@ -61,6 +59,8 @@ protected:
 	void OnEndPuzzle();
 	UFUNCTION(BlueprintImplementableEvent, Category = "PuzzleCheck", meta = (ToolTip = "Called when the puzzle is reset"))
 	void OnResetPuzzle(bool bActive);
+	UFUNCTION(BlueprintCallable, Category = "PuzzleCheck", meta = (ToolTip = "Prints a string to the screen "))
+	void PrintDebug(const FString &Message, bool bError = false);
 
 private:
 	UPuzzleComponent *MyOwner = nullptr;

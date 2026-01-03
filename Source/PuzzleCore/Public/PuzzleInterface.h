@@ -1,45 +1,46 @@
-// #pragma once
+#pragma once
 
-// #include "CoreMinimal.h"
-// #include "UObject/Interface.h"
-// #include "PuzzleInterface.generated.h"
+#include "CoreMinimal.h"
+#include "UObject/Interface.h"
+#include "PuzzleInterface.generated.h"
 
-// UINTERFACE(BlueprintType)
-// class UPuzzleInterface : public UInterface
-// {
-//     GENERATED_BODY()
-// };
+// UINTERFACE is required, but no Blueprint exposure
+UINTERFACE()
+class PUZZLECORE_API UPuzzleInterface : public UInterface
+{
+    GENERATED_BODY()
+};
 
-// class IPuzzleInterface
-// {
-//     GENERATED_BODY()
+// Pure C++ interface
+class PUZZLECORE_API IPuzzleInterface
+{
+    GENERATED_BODY()
 
-// public:
-//     /* Current puzzle state */
-//     UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Puzzle|Getter")
-//     EPuzzleState GetPuzzleState() const;
-//     /* Is puzzle already solved */
-//     UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Puzzle|Getter")
-//     bool IsPuzzleSolved() const;
-//     /* Is Puzzle Solved or Failed return true*/
-//     UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Puzzle|Getter")
-//     bool IsPuzzleUnlocked() const;
-//     /* Is puzzle not be Unavailable */
-//     UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Puzzle|Getter")
-//     bool IsPuzzleActive() const;
-//     /* Human-readable puzzle name */
-//     UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Puzzle|Getter")
-//     FName GetPuzzleName() const;
-//     /* Attempt to solve the puzzle */
-//     UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Puzzle")
-//     bool TrySolve(UObject *Solver);
-//     /* Can the puzzle currently be solved */
-//     UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Puzzle")
-//     bool CanSolve(UObject *Solver) const;
-//     /* Number of attempts so far */
-//     UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Puzzle|Getter")
-//     int32 GetTryCount() const;
-//     /*After puzzle faild with call this method reset the puzzle to Locked State*/
-//     UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Puzzle")
-//     void ResetPuzzle();
-// };
+public:
+    // Current puzzle state
+    virtual EPuzzleState GetPuzzleState() const = 0;
+
+    // Is puzzle already solved
+    virtual bool IsPuzzleSolved() const = 0;
+
+    // Is Puzzle Solved or Failed
+    virtual bool IsPuzzleUnlocked() const = 0;
+
+    // Is puzzle available / active
+    virtual bool IsPuzzleActive() const = 0;
+
+    // Human-readable puzzle name
+    virtual FName GetPuzzleName() const = 0;
+
+    // Attempt to solve the puzzle
+    virtual bool TrySolve(UObject* Solver) = 0;
+
+    // Can the puzzle currently be solved
+    virtual bool CanSolve(UObject* Solver) const = 0;
+
+    // Number of attempts so far
+    virtual int32 GetTryCount() const = 0;
+
+    // Reset the puzzle to locked state
+    virtual void ResetPuzzle() = 0;
+};
