@@ -49,8 +49,10 @@ public:
 	void ResetPuzzle(bool bActive);
 
 protected:
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Puzzle|Getter", meta = (ToolTip = "Returns the owner PuzzleComponent"))
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Puzzle|Getter", meta = (BlueprintProtected = "true", ToolTip = "Returns the owner PuzzleComponent"))
 	UPuzzleComponent *GetOwnerPuzzle() const;
+	UFUNCTION(BlueprintCallable, Category = "PuzzleCheck", meta = (BlueprintProtected = "true", ToolTip = "Prints a string to the screen "))
+	void PrintDebug(const FString &Message, bool bError = false);
 	UFUNCTION(BlueprintImplementableEvent, Category = "PuzzleCheck", meta = (ToolTip = "Called when the puzzle begins evaluation for this check"))
 	void OnBeginPuzzle();
 	UFUNCTION(BlueprintImplementableEvent, BlueprintPure, Category = "PuzzleCheck", meta = (ToolTip = "Evaluates whether this puzzlecheck condition is satisfied"))
@@ -58,9 +60,7 @@ protected:
 	UFUNCTION(BlueprintImplementableEvent, Category = "PuzzleCheck", meta = (ToolTip = "Called when the puzzle evaluation ends for this check"))
 	void OnEndPuzzle();
 	UFUNCTION(BlueprintImplementableEvent, Category = "PuzzleCheck", meta = (ToolTip = "Called when the puzzle is reset"))
-	void OnResetPuzzle(bool bActive);
-	UFUNCTION(BlueprintCallable, Category = "PuzzleCheck", meta = (ToolTip = "Prints a string to the screen "))
-	void PrintDebug(const FString &Message, bool bError = false);
+	void OnResetPuzzle(bool bIsUnavailable);
 
 private:
 	UPuzzleComponent *MyOwner = nullptr;

@@ -12,7 +12,7 @@ UWorld *UPuzzleCheck::GetWorld() const
     }
     else
     {
-        LOG_ERROR("GetWorld Need PuzzleComponent ad Owner that now is null!");
+        LOG_ERROR("Override 'GetWolrd' need to 'BeginPuzzle' first, Now is Null");
         return nullptr;
     }
 }
@@ -44,7 +44,7 @@ void UPuzzleCheck::EndPuzzle(UPuzzleComponent *Owner)
 }
 void UPuzzleCheck::ResetPuzzle(bool bActive)
 {
-    OnResetPuzzle(bActive);
+    OnResetPuzzle(!bActive);
 }
 UPuzzleComponent *UPuzzleCheck::GetOwnerPuzzle() const
 {

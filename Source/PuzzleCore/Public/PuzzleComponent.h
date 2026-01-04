@@ -51,34 +51,40 @@ private:
 	UPROPERTY(EditAnywhere, Instanced, Category = "Puzzle", meta = (ToolTip = "Conditions that must be met before the puzzle can be solved"))
 	TArray<UPuzzleCheck *> Requirements;
 	/** Automatically resets the puzzle after a failed attempt */
-	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "Puzzle", meta = (ToolTip = "Automatically resets the puzzle when it fails"))
-	bool bAutoReset = true;
+	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "Puzzle", meta = (ToolTip = "If enabled, the puzzle will automatically reset after a failed puzzle"))
+	bool bAutoReset = false;
 	/** Automatically resets the puzzle after a failed attempt */
-	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "Puzzle", meta = (ToolTip = "If enabled, the puzzle can be attempted again even after it has failed. When disabled, once the puzzle enters the Failed state, further attempts are blocked."))
-	bool bCanAttemptAfterFail = true;
+	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "Puzzle", meta = (ToolTip = "If enabled, the puzzle can be attempted again even after it has failed. When disabled, once the puzzle enters the Failed state, further attempts are blocked & sould reset Puzzle"))
+	bool bAllowAttemptAfterFailure = true;
+	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "Puzzle", meta = (ToolTip = "When enabled, only a minimum number of requirements must be satisfied. When disabled, all requirements are required."))
+	bool bUseMinimumRequirement = false;
 	/** Minimum number of requirements that must be satisfied */
-	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "Puzzle", meta = (ToolTip = "Minimum number of requirements that must be satisfied to solve the puzzle, 0 means all condition should check"))
-	int32 MinimomRequirement = 0;
+	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "Puzzle", meta = (EditCondition = "bUseMinimumRequirement", EditConditionHides, ToolTip = "Minimum number of requirements that must be satisfied to solve the puzzle, 0 means all condition should check"))
+	int32 MinimumRequirement = 0;
 	/** Current runtime state of the puzzle */
 	EPuzzleState PuzzleState = EPuzzleState::Unavailable;
 	/** Number of solve attempts */
 	int32 TryCount;
+	/** Chache the order of puzzlecheck when tray to solve */
+	int OrderCache = 0;
 	/**
 	 * Changes the current puzzle state and triggers state-related events.
 	 * @param NewState The new state to apply.
 	 */
-	void SetState(const EPuzzleState NewState);
+	void
+	SetState(const EPuzzleState NewState);
 
 protected:
 	/**
-	 * Checks whether a single puzzle rule is satisfied.
-	 * Can be overridden in Blueprint for custom rule logic.
+	 * Called before the puzzle's internal requirement validation.
+	 * Override this function to add custom or game-specific checks.
+	 * Returning false will prevent the puzzle from being solved.
 	 *
 	 * @param PuzzleCheck Rule object to evaluate.
 	 * @return True if the rule is satisfied.
 	 */
-	UFUNCTION(BlueprintNativeEvent, Category = "Puzzle", meta = (ToolTip = "Evaluates a single puzzle requirement ,for custom extended"))
-	bool CheckRule(UPuzzleCheck *PuzlleCheck) const;
+	UFUNCTION(BlueprintNativeEvent, Category = "Puzzle", meta = (ToolTip = "Called before the puzzle's internal requirement check. Override to add custom validation logic.Returning false prevents the call to 'Check Condition' in 'PuzzleCheck'."))
+	bool PrePuzzleCheck(UPuzzleCheck *PuzlleCheck) const;
 
 public:
 	/** Returns the current puzzle state */
@@ -100,13 +106,16 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Puzzle|Getter", meta = (ToolTip = "Returns the number of times the puzzle was attempted"))
 	int32 GetTryCount() const;
 	/**
-	 * Checks whether the given solver is allowed to solve the puzzle.
+	 * Determines whether the specified solver can solve this puzzle.
 	 *
-	 * @param Solver Object attempting to solve the puzzle.
-	 * @return True if the puzzle can be solved.
+	 * If minimum requirement mode is disabled, all puzzle checks must pass.
+	 * If enabled, the puzzle is considered solved once the minimum number of checks succeed.
+	 *
+	 * @param Solver The object attempting to solve the puzzle.
+	 * @return True if the puzzle can be solved; otherwise false.
 	 */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Puzzle", meta = (ToolTip = "Checks whether the puzzle can be solved by the given solver"))
-	bool CanSolve(UObject *Solver) const;
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Puzzle", meta = (ToolTip = "Returns true if the specified solver meets the conditions to solve this puzzle"))
+	bool CanSolvePuzzle(UObject *Solver) const;
 	/**
 	 * Attempts to solve the puzzle.
 	 *
@@ -114,7 +123,7 @@ public:
 	 * @return True if the puzzle solved.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Puzzle", meta = (ToolTip = "Attempts to solve the puzzle and returns 'True' if the puzzle solved"))
-	bool TrySolve(UObject *Solver);
+	bool TrySolvePuzzle(UObject *Solver);
 	/**
 	 * Resets the puzzle.
 	 *

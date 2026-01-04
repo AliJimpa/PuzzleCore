@@ -83,44 +83,61 @@ int32 UPuzzleComponent::GetTryCount() const
 {
 	return TryCount;
 }
-bool UPuzzleComponent::CanSolve(UObject *Solver) const
+bool UPuzzleComponent::CanSolvePuzzle(UObject *Solver) const
 {
-	int OrderNumber = 0;
+	int32 OrderNumber = 0;
+	int32 PassedCount = 0;
+	const int32 RequiredPassCount = bUseMinimumRequirement && MinimumRequirement > 0 ? MinimumRequirement : Requirements.Num();
+
 	for (UPuzzleCheck *Check : Requirements)
 	{
-		OrderNumber++;
-		// if the checkvalid reach to minimom threshould pass true
-		if (OrderNumber == MinimomRequirement)
+		++OrderNumber;
+
+		if (!IsValid(Check))
+		{
+			LOG_WARNING("Invalid PuzzleCheck found in Requirements");
+			continue;
+		}
+
+		// Pre-check gate (custom extension point)
+		if (!PrePuzzleCheck(Check))
+		{
+			if (!bUseMinimumRequirement)
+			{
+				return false;
+			}
+			continue;
+		}
+
+		// Execute actual puzzlecheck
+		if (!Check->ExecuteCheck(Solver, OrderNumber))
+		{
+			if (!bUseMinimumRequirement)
+			{
+				return false;
+			}
+			continue;
+		}
+
+		// Passed this check
+		++PassedCount;
+
+		if (PassedCount >= RequiredPassCount)
 		{
 			return true;
 		}
-		// check is class valid
-		if (!IsValid(Check))
-		{
-			LOG_WARNING("Find invalid PuzzleCheck in Requirements");
-			continue;
-		}
-		// Check Rule is custom function for extend additional rule for checking in blueprin
-		if (!CheckRule(Check))
-		{
-			return false;
-		}
-		// Check Function inside Check puzzle
-		if (!Check->ExecuteCheck(Solver, OrderNumber))
-		{
-			return false;
-		}
 	}
-	return true;
+
+	return PassedCount >= RequiredPassCount;
 }
-bool UPuzzleComponent::TrySolve(UObject *Solver)
+bool UPuzzleComponent::TrySolvePuzzle(UObject *Solver)
 {
 	if (PuzzleState == EPuzzleState::Unavailable)
 	{
 		return false;
 	}
 
-	if (PuzzleState == EPuzzleState::Failed && !bCanAttemptAfterFail)
+	if (PuzzleState == EPuzzleState::Failed && !bAllowAttemptAfterFailure)
 	{
 		PRINT("Cannot trySolve: Puzzle is Failed");
 		return false;
@@ -129,7 +146,7 @@ bool UPuzzleComponent::TrySolve(UObject *Solver)
 	if (PuzzleState != EPuzzleState::Solved)
 	{
 		TryCount++;
-		if (CanSolve(Solver))
+		if (CanSolvePuzzle(Solver))
 		{
 			SetState(EPuzzleState::Solved);
 			OnSolved.Broadcast(this);
@@ -179,7 +196,7 @@ void UPuzzleComponent::SetState(const EPuzzleState NewState)
 	PuzzleState = NewState;
 	OnStateChanged.Broadcast(NewState, this);
 }
-bool UPuzzleComponent::CheckRule_Implementation(UPuzzleCheck *PuzlleCheck) const
+bool UPuzzleComponent::PrePuzzleCheck_Implementation(UPuzzleCheck *PuzlleCheck) const
 {
 	return true;
 }
