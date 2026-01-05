@@ -42,11 +42,11 @@ public:
 	 */
 	void EndPuzzle(UPuzzleComponent *owner);
 	/**
-	 * Called when the puzzle is reset.
+	 * Called when the puzzle's state Changed.
 	 *
-	 * @param bActive Whether the puzzle becomes active after reset.
+	 * @param NewState the NewState of Puzzle.
 	 */
-	void ResetPuzzle(bool bActive);
+	void ChangePuzzleState(EPuzzleState NewState);
 
 protected:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Puzzle|Getter", meta = (BlueprintProtected = "true", ToolTip = "Returns the owner PuzzleComponent"))
@@ -60,7 +60,7 @@ protected:
 	UFUNCTION(BlueprintImplementableEvent, Category = "PuzzleCheck", meta = (ToolTip = "Called when the puzzle evaluation ends for this check"))
 	void OnEndPuzzle();
 	UFUNCTION(BlueprintImplementableEvent, Category = "PuzzleCheck", meta = (ToolTip = "Called when the puzzle is reset"))
-	void OnResetPuzzle(bool bIsUnavailable);
+	void OnPuzzleStateChanged(EPuzzleState NewState);
 
 private:
 	UPuzzleComponent *MyOwner = nullptr;

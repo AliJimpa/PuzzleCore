@@ -2,6 +2,15 @@
 
 #include "PuzzleComponent.h"
 #include "PuzzleDebug.h"
+#include "Net/UnrealNetwork.h"
+#if !UE_BUILD_SHIPPING
+#include "Kismet/KismetSystemLibrary.h"
+#define PRINTSTRING(InString)          \
+	UKismetSystemLibrary::PrintString( \
+		GetWorld(), InString, true, false, FLinearColor::Red, 5.0f)
+#else
+#define PRINTSTRING(InString)
+#endif
 
 // Sets default values for this component's properties
 UPuzzleComponent::UPuzzleComponent()
@@ -11,6 +20,7 @@ UPuzzleComponent::UPuzzleComponent()
 	PrimaryComponentTick.bCanEverTick = false;
 
 	// ...
+	SetIsReplicatedByDefault(true);
 }
 // Called when the game starts
 void UPuzzleComponent::BeginPlay()
@@ -18,47 +28,108 @@ void UPuzzleComponent::BeginPlay()
 	Super::BeginPlay();
 
 	// ...
-	if (bAutoAvailable)
+	if (GetOwner()->GetNetMode() != NM_Standalone)
 	{
-		SetAvaliblePuzzle();
-	}
-	for (UPuzzleCheck *Check : Requirements)
-	{
-		if (IsValid(Check))
+		if (!GetOwner()->GetIsReplicated())
 		{
-			Check->BeginPuzzle(this);
-		}
-		else
-		{
-			LOG_WARNING("Find invalid PuzzleCheck in Requirements");
+			PRINTSTRING(FString::Printf(TEXT("%s owner is NOT replicated"), *GetOwner()->GetName()));
 		}
 	}
-}
-// Called every frame
-void UPuzzleComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
-{
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	// ...
+	if (GetOwner()->HasAuthority())
+	{
+		if (bAutoAvailable)
+		{
+			PuzzleState = EPuzzleState::Locked;
+		}
+		for (UPuzzleCheck *Check : Requirements)
+		{
+			if (IsValid(Check))
+			{
+				Check->BeginPuzzle(this);
+			}
+			else
+			{
+				LOG_WARNING("Find invalid PuzzleCheck in Requirements");
+			}
+		}
+	}
 }
 // Called when the game ends
 void UPuzzleComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	for (UPuzzleCheck *Check : Requirements)
+	if (GetOwner()->HasAuthority())
 	{
-		if (IsValid(Check))
+		for (UPuzzleCheck *Check : Requirements)
 		{
-			Check->EndPuzzle(this);
-		}
-		else
-		{
-			LOG_WARNING("Find invalid PuzzleCheck in Requirements");
+			if (IsValid(Check))
+			{
+				Check->EndPuzzle(this);
+			}
+			else
+			{
+				LOG_WARNING("Find invalid PuzzleCheck in Requirements");
+			}
 		}
 	}
-
 	Super::EndPlay(EndPlayReason);
 }
+// Called for replicate properties function
+void UPuzzleComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> &OutLifetimeProps) const
+{
+	// Call the Super
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
+	// Add properties to replicated for the derived class
+	DOREPLIFETIME(UPuzzleComponent, PuzzleState);
+	DOREPLIFETIME(UPuzzleComponent, TryCount);
+}
+
+// Network Functions
+void UPuzzleComponent::OnRep_PuzzleStateChanged()
+{
+	for (UPuzzleCheck *Check : Requirements)
+	{
+		if (!IsValid(Check))
+		{
+			LOG_WARNING("Find invalid 'PuzzleCheck' in requirements");
+			continue;
+		}
+		Check->ChangePuzzleState(PuzzleState);
+	}
+	OnStateChanged.Broadcast(PuzzleState, this);
+	switch (PuzzleState)
+	{
+	case EPuzzleState::Unavailable:
+		OnReset.Broadcast(false, this);
+		break;
+	case EPuzzleState::Locked:
+		OnReset.Broadcast(true, this);
+		break;
+	case EPuzzleState::Solved:
+		OnSolved.Broadcast(this);
+		break;
+	case EPuzzleState::Failed:
+		OnFailed.Broadcast(this);
+		break;
+	}
+}
+
+// Private Function
+void UPuzzleComponent::SetState(const EPuzzleState NewState)
+{
+	if (PuzzleState == NewState)
+		return;
+
+	PuzzleState = NewState;
+
+	if (GetOwner()->HasAuthority())
+	{
+		OnRep_PuzzleStateChanged();
+	}
+}
+
+// Base PuzzleComponent Functions
 EPuzzleState UPuzzleComponent::GetPuzzleState() const
 {
 	return PuzzleState;
@@ -85,116 +156,143 @@ int32 UPuzzleComponent::GetTryCount() const
 }
 bool UPuzzleComponent::CanSolvePuzzle(UObject *Solver) const
 {
-	int32 OrderNumber = 0;
-	int32 PassedCount = 0;
-	const int32 RequiredPassCount = bUseMinimumRequirement && MinimumRequirement > 0 ? MinimumRequirement : Requirements.Num();
-
-	for (UPuzzleCheck *Check : Requirements)
+	if (GetOwner()->HasAuthority())
 	{
-		++OrderNumber;
+		int32 OrderNumber = 0;
+		int32 PassedCount = 0;
+		const int32 RequiredPassCount = bUseMinimumRequirement && MinimumRequirement > 0 ? MinimumRequirement : Requirements.Num();
 
-		if (!IsValid(Check))
+		for (UPuzzleCheck *Check : Requirements)
 		{
-			LOG_WARNING("Invalid PuzzleCheck found in Requirements");
-			continue;
-		}
+			++OrderNumber;
 
-		// Pre-check gate (custom extension point)
-		if (!PrePuzzleCheck(Check))
-		{
-			if (!bUseMinimumRequirement)
+			if (!IsValid(Check))
 			{
-				return false;
+				LOG_WARNING("Invalid PuzzleCheck found in Requirements");
+				continue;
 			}
-			continue;
-		}
 
-		// Execute actual puzzlecheck
-		if (!Check->ExecuteCheck(Solver, OrderNumber))
-		{
-			if (!bUseMinimumRequirement)
+			// Pre-check gate (custom extension point)
+			if (!PrePuzzleCheck(Check))
 			{
-				return false;
+				if (!bUseMinimumRequirement)
+				{
+					return false;
+				}
+				continue;
 			}
-			continue;
+
+			// Execute actual puzzlecheck
+			if (!Check->ExecuteCheck(Solver, OrderNumber))
+			{
+				if (!bUseMinimumRequirement)
+				{
+					return false;
+				}
+				continue;
+			}
+
+			// Passed this check
+			++PassedCount;
+
+			if (PassedCount >= RequiredPassCount)
+			{
+				return true;
+			}
 		}
 
-		// Passed this check
-		++PassedCount;
-
-		if (PassedCount >= RequiredPassCount)
-		{
-			return true;
-		}
+		return PassedCount >= RequiredPassCount;
 	}
-
-	return PassedCount >= RequiredPassCount;
+	else
+	{
+		PRINTSTRING("SetAvailablePuzzle Should Call in Server");
+		return false;
+	}
 }
 bool UPuzzleComponent::TrySolvePuzzle(UObject *Solver)
 {
-	if (PuzzleState == EPuzzleState::Unavailable)
+	if (GetOwner()->HasAuthority())
 	{
-		return false;
-	}
-
-	if (PuzzleState == EPuzzleState::Failed && !bAllowAttemptAfterFailure)
-	{
-		PRINT("Cannot trySolve: Puzzle is Failed");
-		return false;
-	}
-
-	if (PuzzleState != EPuzzleState::Solved)
-	{
-		TryCount++;
-		if (CanSolvePuzzle(Solver))
+		if (PuzzleState == EPuzzleState::Unavailable)
 		{
-			SetState(EPuzzleState::Solved);
-			OnSolved.Broadcast(this);
-			return true;
+			return false;
 		}
-		else
+
+		if (PuzzleState == EPuzzleState::Failed && !bAllowAttemptAfterFailure)
 		{
-			if (bAutoReset)
+			PRINTSTRING(FString::Printf(TEXT("Cannot Solve: Puzzle's actor(%s) is Failed"), *GetOwner()->GetName()));
+			return false;
+		}
+
+		if (PuzzleState != EPuzzleState::Solved)
+		{
+			TryCount++;
+			if (CanSolvePuzzle(Solver))
 			{
-				ResetPuzzle();
+				SetState(EPuzzleState::Solved);
+				return true;
 			}
 			else
 			{
-				SetState(EPuzzleState::Failed);
-				OnFailed.Broadcast(this);
+				if (bAutoReset)
+				{
+					ResetPuzzle();
+				}
+				else
+				{
+					SetState(EPuzzleState::Failed);
+				}
+				return false;
 			}
-			return false;
+		}
+		else
+		{
+			LOG("The puzzle already solved 'Requirements' dident checked!");
+			return true;
 		}
 	}
 	else
 	{
-		LOG("The puzzle already solved 'Requirements' dident checked!");
-		return true;
+		PRINTSTRING("TrySolvePuzzle Should Call in Server");
+		return false;
 	}
 }
-void UPuzzleComponent::ResetPuzzle(bool bActive)
+void UPuzzleComponent::ResetPuzzle()
 {
-	for (UPuzzleCheck *Check : Requirements)
+	if (GetOwner()->HasAuthority())
 	{
-		if (!IsValid(Check))
-		{
-			LOG_WARNING("Find invalid PuzzleCheck in Requirements");
-			continue;
-		}
-		Check->ResetPuzzle(bActive);
+		TryCount = 0;
+		if (PuzzleState != EPuzzleState::Locked)
+			SetState(EPuzzleState::Locked);
 	}
-	TryCount = 0;
-	SetState(bActive ? EPuzzleState::Locked : EPuzzleState::Unavailable);
-	OnReset.Broadcast(bActive, this);
+	else
+	{
+		PRINTSTRING("ResetPuzzle Should Call in Server");
+	}
 }
-void UPuzzleComponent::SetAvaliblePuzzle(bool bEnable)
+void UPuzzleComponent::SetAvailablePuzzle(bool bEnable)
 {
-	SetState(EPuzzleState::Locked);
-}
-void UPuzzleComponent::SetState(const EPuzzleState NewState)
-{
-	PuzzleState = NewState;
-	OnStateChanged.Broadcast(NewState, this);
+	if (GetOwner()->HasAuthority())
+	{
+		if (bEnable)
+		{
+			if (PuzzleState != EPuzzleState::Unavailable)
+			{
+				SetState(EPuzzleState::Unavailable);
+			}
+		}
+		else
+		{
+			if (PuzzleState != EPuzzleState::Locked)
+			{
+				SetState(EPuzzleState::Locked);
+			}
+		}
+	}
+	else
+	{
+		PRINTSTRING("SetAvailablePuzzle Should Call in Server");
+	}
 }
 bool UPuzzleComponent::PrePuzzleCheck_Implementation(UPuzzleCheck *PuzlleCheck) const
 {

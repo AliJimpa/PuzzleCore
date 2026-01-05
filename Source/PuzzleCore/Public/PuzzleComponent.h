@@ -37,8 +37,8 @@ protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 public:
-	// Called every frame
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
+	// Override replicate properties function
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty> &OutLifetimeProps) const;
 
 private:
 	/** Automatically makes the puzzle available when the game starts */
@@ -62,17 +62,15 @@ private:
 	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "Puzzle", meta = (EditCondition = "bUseMinimumRequirement", EditConditionHides, ToolTip = "Minimum number of requirements that must be satisfied to solve the puzzle, 0 means all condition should check"))
 	int32 MinimumRequirement = 0;
 	/** Current runtime state of the puzzle */
+	UPROPERTY(ReplicatedUsing = OnRep_PuzzleStateChanged)
 	EPuzzleState PuzzleState = EPuzzleState::Unavailable;
+	UFUNCTION()
+	void OnRep_PuzzleStateChanged();
 	/** Number of solve attempts */
+	UPROPERTY(Replicated)
 	int32 TryCount;
-	/** Chache the order of puzzlecheck when tray to solve */
-	int OrderCache = 0;
-	/**
-	 * Changes the current puzzle state and triggers state-related events.
-	 * @param NewState The new state to apply.
-	 */
-	void
-	SetState(const EPuzzleState NewState);
+
+	void SetState(const EPuzzleState NewState);
 
 protected:
 	/**
@@ -126,18 +124,16 @@ public:
 	bool TrySolvePuzzle(UObject *Solver);
 	/**
 	 * Resets the puzzle.
-	 *
-	 * @param bActive If true, the puzzle becomes active after reset.
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Puzzle", meta = (ToolTip = "Evaluates Reset event in all requirement and then if active true set state to locked and if false set state to Unavailable"))
-	void ResetPuzzle(bool bActive = true);
+	UFUNCTION(BlueprintCallable, Category = "Puzzle", meta = (ToolTip = "Change puzzle state to 'Locked' & try counter reset"))
+	void ResetPuzzle();
 	/**
 	 * Enables or disables the puzzle availability.
 	 *
 	 * @param bEnable Whether the puzzle is available.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Puzzle")
-	void SetAvaliblePuzzle(bool bEnable = true);
+	void SetAvailablePuzzle(bool bEnable = true);
 	/** Called when the puzzle state changes */
 	UPROPERTY(BlueprintAssignable, Category = "Puzzle|Event")
 	FOnStateChanged OnStateChanged;
