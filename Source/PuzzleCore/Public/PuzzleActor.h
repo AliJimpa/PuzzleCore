@@ -19,6 +19,6 @@ public:
 
 protected:
 	// The default puzzle component
-	UPROPERTY(VisibleAnywhere, Instanced, BlueprintReadOnly, Category = "Puzzle")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UPuzzleComponent *PuzzleComponent;
 };
