@@ -1,4 +1,6 @@
 # PuzzleCore
+![PuzzleCore](https://github.com/AliJimpa/PuzzleCore/blob/main/Resources/Icon128.png) 
+
 `PuzzleCore` is a minimal, modular puzzle framework for `UnrealEngine`, designed to simplify implementing puzzle logic in both offline and online multiplayer games.
 
 The system focuses on clear separation of logic, data-driven conditions, and network-friendly design, making it suitable for small indie projects as well as scalable multiplayer experiences.
