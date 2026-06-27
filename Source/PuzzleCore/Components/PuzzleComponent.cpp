@@ -1,8 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "PuzzleComponent.h"
-#include "PuzzleDebug.h"
 #include "Net/UnrealNetwork.h"
+#include "Commands/PuzzleCheck.h"
 #if !UE_BUILD_SHIPPING
 #include "Kismet/KismetSystemLibrary.h"
 #define PRINTSTRING(InString)          \

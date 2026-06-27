@@ -1,8 +1,8 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "PuzzleCheck.h"
-#include "PuzzleDebug.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Components/PuzzleComponent.h"
 
 UWorld *UPuzzleCheck::GetWorld() const
 {

@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "PuzzleActor.h"
-#include "PuzzleComponent.h"
+#include "Components/PuzzleComponent.h"
 
 // Sets default values
 APuzzleActor::APuzzleActor()

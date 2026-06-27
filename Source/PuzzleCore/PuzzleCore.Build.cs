@@ -7,6 +7,9 @@ public class PuzzleCore : ModuleRules
 	public PuzzleCore(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
+
+		PublicIncludePaths.Add(ModuleDirectory);
+		PrivateIncludePaths.Add(ModuleDirectory);
 		
 		PublicIncludePaths.AddRange(
 			new string[] {

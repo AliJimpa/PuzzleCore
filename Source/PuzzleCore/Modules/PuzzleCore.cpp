@@ -1,7 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "PuzzleCore.h"
-#include "PuzzleDebug.h"
+#include "Engine/PuzzleDebug.h"
 
 #define LOCTEXT_NAMESPACE "FPuzzleCoreModule"
 
