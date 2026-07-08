@@ -1,4 +1,5 @@
 #pragma once
+
 #include "CoreMinimal.h"
 
 DECLARE_LOG_CATEGORY_EXTERN(Log_PuzzleCore, Log, All);
@@ -6,13 +7,13 @@ DECLARE_LOG_CATEGORY_EXTERN(Log_PuzzleCore, Log, All);
 #if !UE_BUILD_SHIPPING
 
 #define LOG(Format, ...) \
-    UE_LOG(Log_PuzzleCore, Log, TEXT(Format), ##__VA_ARGS__)
+    do { UE_LOG(Log_PuzzleCore, Log, TEXT(Format), ##__VA_ARGS__); } while (0)
 
 #define LOG_WARNING(Format, ...) \
-    UE_LOG(Log_PuzzleCore, Warning, TEXT(Format), ##__VA_ARGS__)
+    do { UE_LOG(Log_PuzzleCore, Warning, TEXT(Format), ##__VA_ARGS__); } while (0)
 
 #define LOG_ERROR(Format, ...) \
-    UE_LOG(Log_PuzzleCore, Error, TEXT(Format), ##__VA_ARGS__)
+    do { UE_LOG(Log_PuzzleCore, Error, TEXT(Format), ##__VA_ARGS__); } while (0)
 
 #define PRINT(Format, ...)                                     \
     do                                                         \
@@ -27,9 +28,9 @@ DECLARE_LOG_CATEGORY_EXTERN(Log_PuzzleCore, Log, All);
 
 #else
 
-#define LOG(...)
-#define LOG_WARNING(...)
-#define LOG_ERROR(...)
-#define PRINT(...)
+#define LOG(...)           do {} while (0)
+#define LOG_WARNING(...)   do {} while (0)
+#define LOG_ERROR(...)     do {} while (0)
+#define PRINT(...)         do {} while (0)
 
 #endif
