@@ -276,16 +276,16 @@ void UPuzzleComponent::SetAvailablePuzzle(bool bEnable)
 	{
 		if (bEnable)
 		{
-			if (PuzzleState != EPuzzleState::Unavailable)
+			if (PuzzleState != EPuzzleState::Locked)
 			{
-				SetState(EPuzzleState::Unavailable);
+				SetState(EPuzzleState::Locked);
 			}
 		}
 		else
 		{
-			if (PuzzleState != EPuzzleState::Locked)
+			if (PuzzleState != EPuzzleState::Unavailable)
 			{
-				SetState(EPuzzleState::Locked);
+				SetState(EPuzzleState::Unavailable);
 			}
 		}
 	}
